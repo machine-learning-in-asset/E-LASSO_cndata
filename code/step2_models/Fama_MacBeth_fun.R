@@ -115,7 +115,7 @@ smoothed.WLS.pred <- function(data = dataset$panel,
     by = c(id_col)
   ]
   out <- out[is.finite(mom12m_raw)]
- 
+  
   
   out[
     ,
@@ -162,7 +162,7 @@ smoothed.WLS.pred <- function(data = dataset$panel,
   setorderv(fm_coef, c("term", date_col))
   
   fm_coef[, estimate_ma_lag1 := shift(frollmean(estimate, n = smoothing_windows, align = "right", fill = NA_real_, na.rm = TRUE), n = 1L), by = term]
- fm_coef <- fm_coef[, .SD[seq_len(.N) > smoothing_windows], by = term]
+  fm_coef <- fm_coef[, .SD[seq_len(.N) > smoothing_windows], by = term]
   
   data.table::setorderv(
     fm_coef,
@@ -195,9 +195,11 @@ smoothed.WLS.pred <- function(data = dataset$panel,
   )
   
   
-  pred_result <- lapply(valid_dates,function(current_date){
+  pred_result <- lapply(valid_dates[-length(valid_dates)],function(current_date){
     coef_filter <- fm_coef[get(date_col) == current_date, c('term', 'estimate'),with = F]
-    out_filter <- out_selected[get(date_col) == current_date]
+    count_id <- which(valid_dates == current_date)
+    next_date <- valid_dates[count_id + 1L]
+    out_filter <- out_selected[get(date_col) == next_date]
     
     out_filter[
       ,
@@ -212,7 +214,7 @@ smoothed.WLS.pred <- function(data = dataset$panel,
   }) |> 
     rbindlist(use.names = F) |> 
     select(any_of(id_col), any_of(date_col), any_of(outcome_col), any_of(weight_col), pred) |> 
-    rename(actual = value)
+    rename(actual = any_of(outcome_col))
   
   list(prediction = pred_result, 
        formula = fm_formula, 
